@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  API Gateway proxy to SNS topic
+  
+  API gateway that publish message to sns topic and return 200.
+Parameters: 
+  PathUrl:
+    Type: String
+    Default: webhook
+  StageName:
+    Type: String
+    Default: prod
+
+Resources:
+  SnsTopic:
+    Type: AWS::SNS::Topic
+
+  ApiGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: !Sub "${AWS::StackName}-ApiGW"
+      Description: "API gateway for webhook"
+
+  WebhookResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt "ApiGateway.RootResourceId"
+      PathPart: !Ref PathUrl
+      RestApiId: !Ref ApiGateway
+
+  WebHookMethod:
+      Type: "AWS::ApiGateway::Method"
+      Properties:
+        HttpMethod: POST
+        MethodResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+                "method.response.header.Access-Control-Allow-Origin": true
+        AuthorizationType: "NONE"
+        ResourceId: !Ref WebhookResource
+        RestApiId: !Ref ApiGateway
+        Integration:
+          Type: "AWS"
+          IntegrationHttpMethod: "POST"
+          Uri: !Sub "arn:aws:apigateway:${AWS::Region}:sns:action/Publish"
+          IntegrationResponses:
+            - StatusCode: 200
+              ResponseParameters:
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              ResponseTemplates:
+                "application/json": '{"status":"OK"}'
+          Credentials: !GetAtt ApiToSnsRole.Arn
+          RequestParameters:
+            integration.request.querystring.TopicArn: !Sub "'${SnsTopic}'"
+            integration.request.querystring.Message: "method.request.body"
+  ApiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - "WebHookMethod"
+    Properties:
+      RestApiId: !Ref "ApiGateway"
+      StageName: !Ref "StageName"
+
+  ApiToSnsRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Action:
+            - "sts:AssumeRole"
+            Principal:
+              Service:
+              - "apigateway.amazonaws.com"
+            Effect: "Allow"
+        Policies:
+        - PolicyName: "MessageToSnsTopic"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Action:
+              - sns:Publish
+              Resource: !Ref SnsTopic
+              Effect: "Allow"
+            - Action:
+                - logs:PutLogEvents
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+              Resource: "*"
+              Effect: Allow
