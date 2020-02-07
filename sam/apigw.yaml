@@ -8,7 +8,7 @@ Parameters:
   PathUrl:
     Type: String
     Default: webhook
-  StageName:
+  FunctionStack:
     Type: String
     Default: prod
 
@@ -22,7 +22,7 @@ Resources:
       Name: !Sub "${AWS::StackName}-ApiGW"
       Description: "API gateway for webhook"
 
-  WebhookResource:
+  APIGatewayRoot:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt "ApiGateway.RootResourceId"
@@ -38,7 +38,7 @@ Resources:
             ResponseParameters:
                 "method.response.header.Access-Control-Allow-Origin": true
         AuthorizationType: "NONE"
-        ResourceId: !Ref WebhookResource
+        ResourceId: !Ref APIGatewayRoot
         RestApiId: !Ref ApiGateway
         Integration:
           Type: "AWS"
