@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -19,30 +20,36 @@ var (
 )
 
 type Input struct {
-	a   int    `json:"a"`
-	b   int    `json:"b"`
-	ops string `json:"ops"`
+	A   string `json:"a"`
+	B   string `json:"b"`
+	Ops string `json:"ops"`
 }
 type Output struct {
-	value int `json:"value"`
+	Value string `json:"value"`
 }
 
 func handler(request Input) (Output, error) {
-	fmt.Printf("Received: %s\n", request.Message)
-	switch request.ops {
+	fmt.Println("Received: %s\n", request)
+	a, _ := strconv.Atoi(request.A)
+	b, _ := strconv.Atoi(request.B)
+	var result int
+	switch request.Ops {
 	case "+":
-		return Output{value: a + b}, nil
+		result = a + b
 	case "-":
-		return Output{value: a - b}, nil
+		result = a - b
 	case "*":
-		return Output{value: a * b}, nil
+		result = a * b
 	case "/":
-		return Output{value: a / b}, nil
+		result = a / b
 	case "^":
-		return Output{value: a ^ b}, nil
+		result = a ^ b
 	default:
-		return nil, errors.New("Unknown Operator %w")
+		return Output{}, errors.New("Unknown Operator")
 	}
+
+	strAns := strconv.Itoa(result)
+	return Output{Value: strAns}, nil
 }
 
 func main() {

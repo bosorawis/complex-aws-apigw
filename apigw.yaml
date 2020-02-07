@@ -14,9 +14,10 @@ Outputs:
   ApiGwLogicalID:
     Description: "API Gateway Logical ID (!Ref)"
     Value: !Ref ApiGateway
-  ApiGwLogicalID:
-    Description: "API Gateway Logical ID (!Ref)"
-    Value: !Ref ApiGateway
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGwLogicalID"
   ApiGwRootResourceID:
-    Description: "API Gateway RootResourceId (!GetAtt RootResourceId.RootResourceId)"
+    Description: "API Gateway RootResourceId (GetAtt ApiGwRootResourceID.RootResourceId)"
     Value: !GetAtt ApiGateway.RootResourceId
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGwRootResourceID"

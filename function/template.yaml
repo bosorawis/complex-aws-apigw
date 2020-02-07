@@ -19,6 +19,11 @@ Resources:
       Runtime: go1.x
       Tracing: Active
 Outputs:
-  PingPongFunction:
+  PingPongFunctionArn:
     Description: "First Lambda Function ARN"
     Value: !GetAtt PingPongFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-PingPongFunctionArn"
+  PingPongFunctionRef:
+    Description: "First Lambda Function Ref"
+    Value: !Ref PingPongFunction

@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  API Gateway proxy to SNS topic
+  
+  API gateway that publish message to sns topic and return 200.
+Parameters: 
+  ApiGatewayBaseStackName:
+    Type: String
+    Default: base-api-gw
+  StageName:
+    Type: String
+    Default: v1
+  FunctionStackName:
+    Type: String
+    Default: apigw-pingpong
+
+Resources:
+  SamPostPath:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      PathPart: sammy
+      ParentId: 
+        Fn::ImportValue:
+          !Sub "${ApiGatewayBaseStackName}-ApiGwRootResourceID"
+      RestApiId:
+        Fn::ImportValue:
+          !Sub "${ApiGatewayBaseStackName}-ApiGwLogicalID"
+        
+  ApiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn: PostMethod
+    Properties:
+      RestApiId:
+        Fn::ImportValue:
+          !Sub "${ApiGatewayBaseStackName}-ApiGwLogicalID"
+      StageName: !Ref "StageName"
+
+
+  PostMethod:
+      Type: "AWS::ApiGateway::Method"
+      Properties:
+        HttpMethod: POST
+        AuthorizationType: "NONE"
+        ResourceId: !Ref SamPostPath
+        RestApiId:
+          Fn::ImportValue:
+            !Sub "${ApiGatewayBaseStackName}-ApiGwLogicalID"
+        Integration:
+          Type: "AWS"
+          IntegrationHttpMethod: "POST"
+          Uri: 
+            Fn::Sub:
+              -  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+              - lambdaArn: 
+                  Fn::ImportValue:
+                    !Sub "${FunctionStackName}-PingPongFunctionArn"
+          # IntegrationResponses:
+          #   - StatusCode: 200
+          #     ResponseParameters:
+          #       "method.response.header.Access-Control-Allow-Origin": "'*'"
+          #     ResponseTemplates:
+          #       "application/json": '{"status":"OK"}'
+          Credentials: !GetAtt PingPongMethodRole.Arn
+
+  PingPongMethodRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Action:
+            - "sts:AssumeRole"
+            Principal:
+              Service:
+              - "apigateway.amazonaws.com"
+            Effect: "Allow"
+        Policies:
+        - PolicyName: "FunctionInvoke"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Action:
+              - lambda:InvokeFunction
+              - lambda:InvokeAsync
+              Resource: 
+                Fn::ImportValue: !Sub "${FunctionStackName}-PingPongFunctionArn"
+              Effect: "Allow"
+            - Action:
+                - logs:PutLogEvents
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+              Resource: "*"
+              Effect: Allow
